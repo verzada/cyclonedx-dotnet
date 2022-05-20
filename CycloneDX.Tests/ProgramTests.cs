@@ -19,17 +19,31 @@ using System.Collections.Generic;
 using Xunit;
 using System.IO.Abstractions.TestingHelpers;
 using System.Threading.Tasks;
+using System.CommandLine.IO;
 using XFS = System.IO.Abstractions.TestingHelpers.MockUnixSupport;
 using Moq;
 using CycloneDX.Models;
 using System.IO;
 using CycloneDX.Interfaces;
 using Microsoft.DotNet.PlatformAbstractions;
+using CycloneDX.Services;
+using System.CommandLine;
+using System.CommandLine.Builder;
+using System.CommandLine.Parsing;
+using System;
+using Xunit.Abstractions;
 
 namespace CycloneDX.Tests
 {
     public class ProgramTests
     {
+        private readonly ITestOutputHelper _testOutputHelper;
+        public ProgramTests(ITestOutputHelper testOutputHelper)
+        {
+            _testOutputHelper = testOutputHelper;
+        }
+        private readonly TestConsole _console = new TestConsole();
+
         [Fact]
         public async Task CallingCycloneDX_WithoutSolutionFile_ReturnsSolutionOrProjectFileParameterMissingExitCode()
         {
@@ -82,6 +96,20 @@ namespace CycloneDX.Tests
             Assert.NotEmpty(bom.Metadata.Tools);
             Assert.Matches("CycloneDX", bom.Metadata.Tools[0].Vendor);
             Assert.Matches("1.2.0", bom.Metadata.Tools[0].Version);
+        }
+
+        [Theory]
+        [InlineData("-h")]
+        public async void TestParameters(string value)
+        {
+            var programTester = new ProgramService();
+            var rootCommand = programTester.SetupCommandLineApplication();
+
+            var config = new CommandLineBuilder(rootCommand).UseHelp().Build();
+            await config.InvokeAsync($"cyclonedx {value}", _console);
+            _testOutputHelper.WriteLine(_console.Out.ToString());
+
+
         }
     }
 }
